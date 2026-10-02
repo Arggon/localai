@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "id": "com.github.linuxgameruk.omallamacpp",
+  "name": "OmaLlamaCpp",
+  "version": "1.1.0",
+  "author": "LinuxGamerUK",
+  "license": "MIT",
+  "description": "Control a local llama.cpp llama-server from the Omarchy bar. Start and stop it as a user systemd service, see VRAM use, the loaded model and context, and switch between local .gguf models on disk.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "OmaLlamaCpp",
+    "description": "Start and stop llama-server from the bar. Shows service state, loaded model, VRAM use, and lists the .gguf models on disk.",
+    "category": "System",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "refreshIntervalSec": 10,
+      "port": 8080,
+      "modelsDir": "LLM/models",
+      "binary": "LLM/tools/llamacpp/llama-server",
+      "ctxSize": 147456,
+      "modelFile": "",
+      "extraArgs": "--batch-size 2048 --ubatch-size 2048 --cache-type-k q8_0 --cache-type-v q8_0 --flash-attn on --override-tensor 'blk\\.[0-9]+\\.ffn_.*_exps\\.weight=CPU' --jinja --metrics --slots --no-ui"
+    },
+    "schema": [
+      {
+        "key": "refreshIntervalSec",
+        "type": "integer",
+        "label": "Refresh interval (seconds)",
+        "min": 2,
+        "max": 300,
+        "step": 1,
+        "defaultValue": 10
+      },
+      {
+        "key": "port",
+        "type": "integer",
+        "label": "Server port",
+        "min": 1024,
+        "max": 65535,
+        "step": 1,
+        "defaultValue": 8080
+      },
+      {
+        "key": "modelsDir",
+        "type": "path",
+        "label": "Models folder (relative to home if not absolute)",
+        "defaultValue": "LLM/models"
+      },
+      {
+        "key": "binary",
+        "type": "path",
+        "label": "llama-server binary (relative to home if not absolute)",
+        "defaultValue": "LLM/tools/llamacpp/llama-server"
+      },
+      {
+        "key": "ctxSize",
+        "type": "integer",
+        "label": "Context size the service serves",
+        "min": 4096,
+        "max": 524288,
+        "step": 4096,
+        "defaultValue": 147456
+      },
+      {
+        "key": "modelFile",
+        "type": "string",
+        "label": "Model .gguf filename inside the models folder (empty = first .gguf found)",
+        "defaultValue": ""
+      },
+      {
+        "key": "extraArgs",
+        "type": "string",
+        "label": "Extra llama-server flags baked into the service unit",
+        "defaultValue": "--batch-size 2048 --ubatch-size 2048 --cache-type-k q8_0 --cache-type-v q8_0 --flash-attn on --override-tensor 'blk\\.[0-9]+\\.ffn_.*_exps\\.weight=CPU' --jinja --metrics --slots --no-ui"
+      }
+    ]
+  },
+  "repository": "https://github.com/LinuxGamerUK/omallamacpp"
+}
