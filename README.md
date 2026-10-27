@@ -26,7 +26,7 @@ from the panel.
 ## Install
 
 ```sh
-omarchy plugin add https://github.com/LinuxGamerUK/arggon.localai.git --enable
+omarchy plugin add https://github.com/Arggon/localai.git --enable
 ```
 
 ## Service setup
