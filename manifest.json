@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "com.github.linuxgameruk.omallamacpp",
   "name": "OmaLlamaCpp",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": "LinuxGamerUK",
   "license": "MIT",
-  "description": "Control a local llama.cpp llama-server from the Omarchy bar. Start and stop it as a user systemd service, see VRAM use, the loaded model and context, and switch between local .gguf models on disk.",
+  "description": "Control a local llama.cpp llama-server from the Omarchy bar. Start and stop it as a user systemd service, see VRAM use, the loaded model and context, and switch between local .gguf models on disk. Optional ROCm (nightly) backend support for AMD GPUs.",
   "kinds": [
     "bar-widget"
   ],
@@ -14,7 +14,7 @@
   },
   "barWidget": {
     "displayName": "OmaLlamaCpp",
-    "description": "Start and stop llama-server from the bar. Shows service state, loaded model, VRAM use, and lists the .gguf models on disk.",
+    "description": "Start and stop llama-server from the bar. Shows service state, loaded model, VRAM use, and lists the .gguf models on disk. Supports a ROCm (nightly) backend on AMD GPUs.",
     "category": "System",
     "allowMultiple": false,
     "defaultSection": "right",
@@ -22,7 +22,11 @@
       "refreshIntervalSec": 10,
       "port": 8080,
       "modelsDir": "LLM/models",
-      "binary": "LLM/tools/llamacpp/llama-server",
+      "binary": "/usr/bin/llama-server",
+      "useRocm": 0,
+      "rocmBinary": "",
+      "rocmLibPath": "",
+      "hsaOverrideGfxVersion": "",
       "ctxSize": 147456,
       "modelFile": "",
       "extraArgs": "--batch-size 2048 --ubatch-size 2048 --cache-type-k q8_0 --cache-type-v q8_0 --flash-attn on --override-tensor 'blk\\.[0-9]+\\.ffn_.*_exps\\.weight=CPU' --jinja --metrics --slots --no-ui"
@@ -55,8 +59,35 @@
       {
         "key": "binary",
         "type": "path",
-        "label": "llama-server binary (relative to home if not absolute)",
-        "defaultValue": "LLM/tools/llamacpp/llama-server"
+        "label": "llama-server binary (Vulkan/CPU build; absolute or relative to home)",
+        "defaultValue": "/usr/bin/llama-server"
+      },
+      {
+        "key": "useRocm",
+        "type": "integer",
+        "label": "Use ROCm (nightly) backend (0 = Vulkan/CPU, 1 = ROCm)",
+        "min": 0,
+        "max": 1,
+        "step": 1,
+        "defaultValue": 0
+      },
+      {
+        "key": "rocmBinary",
+        "type": "path",
+        "label": "ROCm-built llama-server binary (used when Use ROCm = 1; empty = use 'binary')",
+        "defaultValue": ""
+      },
+      {
+        "key": "rocmLibPath",
+        "type": "path",
+        "label": "ROCm nightly lib folder added to LD_LIBRARY_PATH (empty = none)",
+        "defaultValue": ""
+      },
+      {
+        "key": "hsaOverrideGfxVersion",
+        "type": "string",
+        "label": "HSA_OVERRIDE_GFX_VERSION for gfx1031 (empty = native gfx1031 wheels; set 10.3.0 for standard ROCm builds)",
+        "defaultValue": ""
       },
       {
         "key": "ctxSize",

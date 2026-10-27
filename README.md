@@ -124,6 +124,54 @@ omarchy bar set com.github.linuxgameruk.omallamacpp modelFile ""
 omarchy bar set com.github.linuxgameruk.omallamacpp extraArgs "--flash-attn on"
 ```
 
+
+## ROCm (nightly) backend (AMD GPUs)
+
+OmaLlamaCpp can drive a **ROCm-built** `llama-server` instead of the
+Vulkan/CPU build. This is useful on AMD GPUs (e.g. RX 6700 XT / gfx1031)
+where a nightly ROCm stack has native support for your architecture.
+
+Configure (all user-scope, no sudo):
+
+```sh
+# Switch the service to the ROCm backend
+omarchy bar set com.github.linuxgameruk.omallamacpp useRocm 1
+
+# Path to your ROCm-built llama-server (relative to $HOME or absolute)
+omarchy bar set com.github.linuxgameruk.omallamacpp rocmBinary LLM/tools/llamacpp-rocm/llama-server
+
+# Optional: ROCm nightly lib folder added to LD_LIBRARY_PATH
+omarchy bar set com.github.linuxgameruk.omallamacpp rocmLibPath /opt/rocm/lib
+
+# gfx1031 handling:
+#   - Empty (default) = native gfx1031 wheels (no override; recommended for
+#     AMD nightly ROCm that ships gfx1031 code objects).
+#   - Set to 10.3.0 for standard ROCm builds that need the gfx1030 masquerade.
+omarchy bar set com.github.linuxgameruk.omallamacpp hsaOverrideGfxVersion ""
+
+# Switch back to Vulkan/CPU
+omarchy bar set com.github.linuxgameruk.omallamacpp useRocm 0
+```
+
+When `useRocm = 1`, the generated `llama-server.service` unit gains
+`Environment=` lines (HSA override only if set, LD_LIBRARY_PATH only if set)
+and `ExecStart` points at `rocmBinary` (falling back to `binary` when empty).
+Press **Serve** on any model to rewrite and restart the unit.
+
+Notes:
+- Native gfx1031 wheels (AMD nightly) must NOT receive
+  `HSA_OVERRIDE_GFX_VERSION` — it would hide the gfx1031 kernels.
+- Standard ROCm (7.x) builds for gfx1031 still need `10.3.0` plus the
+  flash-attention assert patch (see upstream llama.cpp issue #26702).
+- The plugin never builds llama.cpp; build the ROCm binary yourself first.
+
+## Backend dropdown
+
+The panel now includes a **Backend** dropdown (Vulkan / CPU vs ROCm nightly)
+that controls the `useRocm` setting via `omarchy bar set`. Switching backend
+takes effect on the next **Serve** (the service unit is rewritten and
+restarted for the chosen model).
+
 ## Remove
 
 ```sh

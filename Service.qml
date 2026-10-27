@@ -88,7 +88,12 @@ Item {
   }
 
   readonly property string modelsDir: homePath(setting("modelsDir", "LLM/models"))
-  readonly property string binary: homePath(setting("binary", "LLM/tools/llamacpp/llama-server"))
+  readonly property string binary: homePath(setting("binary", "/usr/bin/llama-server"))
+  readonly property bool useRocm: intSetting("useRocm", 0, 0, 1) === 1
+  readonly property string rocmBinary: homePath(setting("rocmBinary", ""))
+  readonly property string rocmLibPath: homePath(setting("rocmLibPath", ""))
+  readonly property string hsaOverrideGfxVersion: String(setting("hsaOverrideGfxVersion", "") || "").trim()
+  readonly property string activeBinary: (useRocm && rocmBinary !== "") ? rocmBinary : binary
   readonly property int port: intSetting("port", 8080, 1024, 65535)
   readonly property int ctxSize: intSetting("ctxSize", 147456, 4096, 524288)
   readonly property string modelFileSetting: String(setting("modelFile", "") || "").trim()
@@ -163,7 +168,7 @@ Item {
 
   function startService() {
     if (busy || !installed || !hasService) {
-      if (!installed) lastError = "llama-server binary not found at " + truncate(displayPath(binary), 80) + "."
+      if (!installed) lastError = "llama-server binary not found at " + truncate(displayPath(activeBinary), 80) + "."
       return
     }
     busy = true
@@ -194,8 +199,8 @@ Item {
 
   function actionableState() {
     if (!installed) {
-      return "llama-server binary not found at: " + truncate(displayPath(binary), 80) +
-        "\nSet the \u201cbinary\u201d path per the README to your llama-server location."
+      return "llama-server binary not found at: " + truncate(displayPath(activeBinary), 80) +
+        "\nSet the \u201cbinary\u201d (or \u201crocmBinary\u201d) path per the README to your llama-server location."
     }
     if (!hasService) {
       return "No \"llama-server.service\" user unit yet.\nPick a model below and press \"Serve\"."
@@ -221,20 +226,31 @@ Item {
   // ── Unit generation ────────────────────────────────────────────────
   function buildUnitContent(model) {
     if (model === "") return ""
-    return "[Unit]\n" +
+    var unit = "[Unit]\n" +
       "Description=llama.cpp OpenAI-compatible server (llama-server)\n" +
       "\n" +
       "[Service]\n" +
-      "Type=simple\n" +
-      "ExecStart=" + binary + " --host 127.0.0.1 --port " + port + " -c " + ctxSize +
-        (extraArgs !== "" ? " " + extraArgs : "") +
-        " -m " + modelsDir + "/" + model + "\n" +
+      "Type=simple\n"
+    // ROCm (nightly) backend: expose the nightly libs and (optionally) the
+    // gfx1031 compatibility override. Native gfx1031 wheels need no override.
+    if (useRocm) {
+      if (hsaOverrideGfxVersion !== "") {
+        unit += "Environment=\"HSA_OVERRIDE_GFX_VERSION=" + hsaOverrideGfxVersion + "\"\n"
+      }
+      if (rocmLibPath !== "") {
+        unit += "Environment=\"LD_LIBRARY_PATH=" + rocmLibPath + "\"\n"
+      }
+    }
+    unit += "ExecStart=" + activeBinary + " --host 127.0.0.1 --port " + port + " -c " + ctxSize +
+      (extraArgs !== "" ? " " + extraArgs : "") +
+      " -m " + modelsDir + "/" + model + "\n" +
       "Restart=on-failure\n" +
       "RestartSec=5\n" +
       "WorkingDirectory=" + Quickshell.env("HOME") + "\n" +
       "\n" +
       "[Install]\n" +
       "WantedBy=default.target\n"
+    return unit
   }
 
   // Write/replace the unit (env-passed content; no quoting path surgery),
@@ -458,7 +474,7 @@ Item {
   Process {
     id: checkProcess
     running: false
-    environment: ({ "PLUGIN_BIN": root.binary })
+    environment: ({ "PLUGIN_BIN": root.activeBinary })
     command: ["timeout", "-k", "2", "" + root.processTimeoutSec,
               "bash", "-c",
               "set -o pipefail; b=\"$PLUGIN_BIN\"; echo \"BIN:$([ -f \"$b\" ] && { [ -x \"$b\" ] && echo 1 || echo 2; } || echo 0) UNIT:$([ -f \"$HOME/.config/systemd/user/llama-server.service\" ] && echo 1 || echo 0)\" | head -c " + root.capCheck]

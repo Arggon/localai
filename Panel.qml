@@ -45,6 +45,11 @@ Panel {
   }
   property string focusSection: "header"
   property bool cursorActive: false
+  property string backendSelection: "0"
+  function syncBackendSelection() {
+    if (llama.settings && llama.settings.useRocm !== undefined && llama.settings.useRocm !== null)
+      backendSelection = String(llama.settings.useRocm)
+  }
 
   function switchPanel(direction) {
     if (bar && typeof bar.switchPanelFrom === "function")
@@ -98,6 +103,7 @@ Panel {
 
   onOpenedChanged: if (opened) {
     cursorActive = false
+    syncBackendSelection()
     llama.refresh()
     Qt.callLater(function() { if (keyCatcher) keyCatcher.forceActiveFocus() })
   }
@@ -341,6 +347,61 @@ Panel {
           }
         }
 
+        // ── Backend selector (Vulkan/CPU vs ROCm nightly) ────────────
+        PanelSeparator {
+          visible: llama.installed
+          foreground: root.foreground
+        }
+
+        Column {
+          visible: llama.installed
+          width: parent.width
+          spacing: Style.space(6)
+
+          PanelSectionHeader {
+            text: "BACKEND"
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+          }
+
+          Dropdown {
+            id: backendDropdown
+            width: parent.width
+            showLabel: false
+            options: [
+              { value: "0", label: "Vulkan / CPU" },
+              { value: "1", label: "ROCm (nightly)" }
+            ]
+            value: root.backendSelection
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+            onHovered: function(on) { if (on) { root.cursorActive = true; root.focusSection = "backend" } }
+            onChanged: function(v) {
+              root.backendSelection = String(v)
+              backendSetProcess.environment = { "PLUGIN_VAL": String(v) }
+              backendSetProcess.running = true
+              backendSetWatchdog.restart()
+            }
+          }
+
+          Text {
+            visible: backendSetProcess.running
+            text: "Applying backend\u2026"
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            textFormat: Text.PlainText
+          }
+          Text {
+            visible: !backendSetProcess.running && llama.installed && llama.hasService
+            text: "Backend applies on next \u201cServe\u201d."
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            textFormat: Text.PlainText
+          }
+        }
+
         // ── Models on disk ──────────────────────────────────────────
         PanelSeparator {
           visible: llama.models.length > 0
@@ -498,4 +559,24 @@ Panel {
     font.pixelSize: Style.font.bodySmall
     textFormat: Text.PlainText
   }
+  Process {
+    id: backendSetProcess
+    running: false
+    environment: ({ "PLUGIN_VAL": "0" })
+    command: ["timeout", "-k", "2", "8", "bash", "-c",
+              "set -o pipefail; omarchy bar set com.github.linuxgameruk.omallamacpp useRocm \"$PLUGIN_VAL\" 2>&1 | head -c 256"]
+    onExited: function(exitCode) {
+      backendSetWatchdog.stop()
+      llama.refresh()
+      syncBackendSelection()
+    }
+  }
+
+  Timer {
+    id: backendSetWatchdog
+    interval: 8000
+    repeat: false
+    onTriggered: if (backendSetProcess.running) backendSetProcess.running = false
+  }
+
 }
