@@ -3,7 +3,7 @@
   "id": "arggon.localai",
   "name": "ArggonLocalAI",
   "version": "1.2.0",
-  "author": "LinuxGamerUK",
+  "author": "Arggon",
   "license": "MIT",
   "description": "Control a local llama.cpp llama-server from the Omarchy bar. Start and stop it as a user systemd service, see VRAM use, the loaded model and context, and switch between local .gguf models on disk. Optional ROCm (nightly) backend support for AMD GPUs.",
   "kinds": [
