@@ -224,8 +224,28 @@ Item {
   }
 
   // ── Unit generation ────────────────────────────────────────────────
+  function mmprojFor(model) {
+    if (model === "" || !mmprojFiles || mmprojFiles.length === 0) return ""
+    var candidate = "mmproj-" + model
+    for (var i = 0; i < mmprojFiles.length; i++) {
+      if (mmprojFiles[i] === candidate) return mmprojFiles[i]
+    }
+    // Fallback: if only one mmproj exists, pair it with this model.
+    if (mmprojFiles.length === 1) return mmprojFiles[0]
+    // Fallback: suffix match (mmproj file ends with the model name).
+    for (var j = 0; j < mmprojFiles.length; j++) {
+      if (mmprojFiles[j].indexOf(model) !== -1) return mmprojFiles[j]
+    }
+    return ""
+  }
+
   function buildUnitContent(model) {
     if (model === "") return ""
+    var autoMmproj = ""
+    var mp = mmprojFor(model)
+    if (mp !== "" && extraArgs.indexOf("--mmproj") === -1) {
+      autoMmproj = " --mmproj " + modelsDir + "/" + mp
+    }
     var unit = "[Unit]\n" +
       "Description=llama.cpp OpenAI-compatible server (llama-server)\n" +
       "\n" +
@@ -242,7 +262,7 @@ Item {
       }
     }
     unit += "ExecStart=" + activeBinary + " --host 127.0.0.1 --port " + port + " -c " + ctxSize +
-      (extraArgs !== "" ? " " + extraArgs : "") +
+      (extraArgs !== "" ? " " + extraArgs : "") + autoMmproj +
       " -m " + modelsDir + "/" + model + "\n" +
       "Restart=on-failure\n" +
       "RestartSec=5\n" +
@@ -296,6 +316,8 @@ Item {
   property string _apiBuffer: ""
   property string _gpuBuffer: ""
   property var _modelList: []
+  property var _mmprojList: []
+  property var mmprojFiles: []
   property bool _modelsDirMissingFlag: false
   property string _unitBuffer: ""
   property string _startBuffer: ""
@@ -354,12 +376,18 @@ Item {
   function _onModelsLine(line) {
     var s = String(line || "").trim()
     if (s === "MISSING" || s === "\rMISSING") { _modelsDirMissingFlag = true; return }
-    if (_modelList.length >= maxModels) return
     if (s === "") return
     var tab = s.indexOf("\t")
     if (tab <= 0) return
+    var name = truncate(s.substring(tab + 1), 160)
+    // mmproj files are vision projectors, not serveable models — track separately.
+    if (/^mmproj[-_]/i.test(name)) {
+      if (_mmprojList.indexOf(name) === -1) _mmprojList.push(name)
+      return
+    }
+    if (_modelList.length >= maxModels) return
     _modelList.push({
-      name: truncate(s.substring(tab + 1), 160),
+      name: name,
       sizeBytes: s.substring(0, tab),
       sizeStr: humanSize(s.substring(0, tab))
     })
@@ -377,6 +405,9 @@ Item {
     modelsDirMissing = false
     var next = _modelList
     _modelList = []
+    // Publish the mmproj list (reset the buffer for the next cycle).
+    root.mmprojFiles = _mmprojList.slice()
+    _mmprojList = []
     var served = root.servedModel
     for (var i = 0; i < next.length; i++) {
       next[i].isServed = served !== "" && next[i].name === served

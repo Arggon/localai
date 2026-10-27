@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "id": "com.github.linuxgameruk.omallamacpp",
-  "name": "OmaLlamaCpp",
+  "id": "arggon.localai",
+  "name": "ArggonLocalAI",
   "version": "1.2.0",
   "author": "LinuxGamerUK",
   "license": "MIT",
@@ -13,7 +13,7 @@
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
-    "displayName": "OmaLlamaCpp",
+    "displayName": "ArggonLocalAI",
     "description": "Start and stop llama-server from the bar. Shows service state, loaded model, VRAM use, and lists the .gguf models on disk. Supports a ROCm (nightly) backend on AMD GPUs.",
     "category": "System",
     "allowMultiple": false,
@@ -112,5 +112,5 @@
       }
     ]
   },
-  "repository": "https://github.com/LinuxGamerUK/omallamacpp"
+  "repository": "https://github.com/arggon/localai"
 }

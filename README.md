@@ -1,7 +1,7 @@
-# OmaLlamaCpp
+# ArggonLocalAI
 
-![OmaLlamaCpp plugin — running](assets/screenshot.png)
-![OmaLlamaCpp plugin — stopped, model picker](assets/panel-stopped.png)
+![ArggonLocalAI plugin — running](assets/screenshot.png)
+![ArggonLocalAI plugin — stopped, model picker](assets/panel-stopped.png)
 
 An Omarchy shell bar widget for a local **llama.cpp `llama-server`**:
 watch it from the bar, start/stop it as a **user systemd service** (no
@@ -26,7 +26,7 @@ from the panel.
 ## Install
 
 ```sh
-omarchy plugin add https://github.com/LinuxGamerUK/omallamacpp.git --enable
+omarchy plugin add https://github.com/LinuxGamerUK/arggon.localai.git --enable
 ```
 
 ## Service setup
@@ -103,31 +103,31 @@ Keyboard: `s` start · `x` stop · `r` refresh.
 
 ```sh
 # Refresh interval (default: 10 s)
-omarchy bar set com.github.linuxgameruk.omallamacpp refreshIntervalSec 30
+omarchy bar set com.github.linuxgameruk.arggon.localai refreshIntervalSec 30
 
 # Server port (default: 8080)
-omarchy bar set com.github.linuxgameruk.omallamacpp port 8080
+omarchy bar set com.github.linuxgameruk.arggon.localai port 8080
 
 # Models folder (default: LLM/models, relative to $HOME unless absolute)
-omarchy bar set com.github.linuxgameruk.omallamacpp modelsDir LLM/models
+omarchy bar set com.github.linuxgameruk.arggon.localai modelsDir LLM/models
 
 # llama-server binary (default: LLM/tools/llamacpp/llama-server)
-omarchy bar set com.github.linuxgameruk.omallamacpp binary LLM/tools/llamacpp/llama-server
+omarchy bar set com.github.linuxgameruk.arggon.localai binary LLM/tools/llamacpp/llama-server
 
 # Context size baked into the unit (default: 147456)
-omarchy bar set com.github.linuxgameruk.omallamacpp ctxSize 8192
+omarchy bar set com.github.linuxgameruk.arggon.localai ctxSize 8192
 
 # Fixed model file (empty = first .gguf found alphabetically)
-omarchy bar set com.github.linuxgameruk.omallamacpp modelFile ""
+omarchy bar set com.github.linuxgameruk.arggon.localai modelFile ""
 
 # Extra llama-server flags baked into the unit
-omarchy bar set com.github.linuxgameruk.omallamacpp extraArgs "--flash-attn on"
+omarchy bar set com.github.linuxgameruk.arggon.localai extraArgs "--flash-attn on"
 ```
 
 
 ## ROCm (nightly) backend (AMD GPUs)
 
-OmaLlamaCpp can drive a **ROCm-built** `llama-server` instead of the
+ArggonLocalAI can drive a **ROCm-built** `llama-server` instead of the
 Vulkan/CPU build. This is useful on AMD GPUs (e.g. RX 6700 XT / gfx1031)
 where a nightly ROCm stack has native support for your architecture.
 
@@ -135,22 +135,22 @@ Configure (all user-scope, no sudo):
 
 ```sh
 # Switch the service to the ROCm backend
-omarchy bar set com.github.linuxgameruk.omallamacpp useRocm 1
+omarchy bar set com.github.linuxgameruk.arggon.localai useRocm 1
 
 # Path to your ROCm-built llama-server (relative to $HOME or absolute)
-omarchy bar set com.github.linuxgameruk.omallamacpp rocmBinary LLM/tools/llamacpp-rocm/llama-server
+omarchy bar set com.github.linuxgameruk.arggon.localai rocmBinary LLM/tools/llamacpp-rocm/llama-server
 
 # Optional: ROCm nightly lib folder added to LD_LIBRARY_PATH
-omarchy bar set com.github.linuxgameruk.omallamacpp rocmLibPath /opt/rocm/lib
+omarchy bar set com.github.linuxgameruk.arggon.localai rocmLibPath /opt/rocm/lib
 
 # gfx1031 handling:
 #   - Empty (default) = native gfx1031 wheels (no override; recommended for
 #     AMD nightly ROCm that ships gfx1031 code objects).
 #   - Set to 10.3.0 for standard ROCm builds that need the gfx1030 masquerade.
-omarchy bar set com.github.linuxgameruk.omallamacpp hsaOverrideGfxVersion ""
+omarchy bar set com.github.linuxgameruk.arggon.localai hsaOverrideGfxVersion ""
 
 # Switch back to Vulkan/CPU
-omarchy bar set com.github.linuxgameruk.omallamacpp useRocm 0
+omarchy bar set com.github.linuxgameruk.arggon.localai useRocm 0
 ```
 
 When `useRocm = 1`, the generated `llama-server.service` unit gains
@@ -175,7 +175,7 @@ restarted for the chosen model).
 ## Remove
 
 ```sh
-omarchy plugin remove com.github.linuxgameruk.omallamacpp
+omarchy plugin remove com.github.linuxgameruk.arggon.localai
 ```
 
 The created user unit and models folder are yours to delete:

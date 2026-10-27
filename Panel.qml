@@ -8,8 +8,8 @@ import qs.Ui
 
 Panel {
   id: root
-  moduleName: "com.github.linuxgameruk.omallamacpp"
-  ipcTarget: "com.github.linuxgameruk.omallamacpp"
+  moduleName: "arggon.localai"
+  ipcTarget: "arggon.localai"
   manageIpc: false
 
   property var anchorItem: null
@@ -45,10 +45,35 @@ Panel {
   }
   property string focusSection: "header"
   property bool cursorActive: false
+  property string searchQuery: ""
+  property var searchResults: []
+  property bool searching: false
+  property bool downloading: false
+  property string downloadStatus: ""
+  property var _searchModelList: []
   property string backendSelection: "0"
   function syncBackendSelection() {
     if (llama.settings && llama.settings.useRocm !== undefined && llama.settings.useRocm !== null)
       backendSelection = String(llama.settings.useRocm)
+  }
+
+  function _onSearchLine(line) {
+    var s = String(line || "").trim()
+    if (s === "") return
+    var tab = s.indexOf("\t")
+    if (tab <= 0) return
+    var downloads = parseInt(s.substring(0, tab), 10)
+    var id = s.substring(tab + 1)
+    if (!isFinite(downloads)) downloads = 0
+    _searchModelList.push({ id: id, downloads: downloads })
+  }
+
+  function _applySearchResults() {
+    var next = _searchModelList
+    _searchModelList = []
+    searchResults = next
+    if (next.length === 0) downloadStatus = "No GGUF models found."
+    else downloadStatus = ""
   }
 
   function switchPanel(direction) {
@@ -235,7 +260,7 @@ Panel {
 
             Text {
               width: parent.width
-              text: "OmaLlamaCpp"
+              text: "ArggonLocalAI"
               color: root.foreground
               font.family: root.fontFamily
               font.pixelSize: Style.font.title
@@ -402,6 +427,142 @@ Panel {
           }
         }
 
+        // ── Search models online ─────────────────────────────────────
+        PanelSeparator {
+          visible: llama.installed
+          foreground: root.foreground
+        }
+
+        Column {
+          visible: llama.installed
+          width: parent.width
+          spacing: Style.space(6)
+
+          PanelSectionHeader {
+            text: "SEARCH ONLINE (HuggingFace GGUF)"
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+          }
+
+          RowLayout {
+            width: parent.width
+            spacing: Style.space(8)
+
+            TextField {
+              id: searchField
+              Layout.fillWidth: true
+              placeholderText: "model name (e.g. gemma 4)"
+              text: root.searchQuery
+              onTextChanged: root.searchQuery = text
+              onAccepted: {
+                if (root.searchQuery.trim() !== "" && !root.searching) {
+                  root.searchResults = []
+                  root._searchModelList = []
+                  root.searching = true
+                  searchProcess.environment = { "PLUGIN_QUERY": root.searchQuery.trim() }
+                  searchProcess.running = true
+                  searchWatchdog.restart()
+                }
+              }
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+            }
+
+            Button {
+              text: root.searching ? "..." : "Search"
+              bordered: true
+              foreground: root.foreground
+              enabled: !root.searching && root.searchQuery.trim() !== ""
+              onClicked: searchField.accepted()
+            }
+          }
+
+          Text {
+            visible: root.searching
+            text: "Searching HuggingFace..."
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            textFormat: Text.PlainText
+          }
+
+          Text {
+            visible: root.downloadStatus !== ""
+            text: root.downloadStatus
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            width: parent.width
+          }
+
+          Column {
+            width: parent.width
+            spacing: Style.space(4)
+            visible: root.searchResults.length > 0
+
+            Repeater {
+              model: root.searchResults
+
+              CursorSurface {
+                required property var modelData
+                width: parent.width
+                foreground: root.foreground
+                implicitHeight: row.implicitHeight + Style.spacing.rowPaddingX
+
+                RowLayout {
+                  id: row
+                  anchors.left: parent.left
+                  anchors.right: parent.right
+                  anchors.verticalCenter: parent.verticalCenter
+                  anchors.leftMargin: Style.space(10)
+                  anchors.rightMargin: Style.space(10)
+                  spacing: Style.space(8)
+
+                  ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: Style.space(1)
+
+                    Text {
+                      Layout.fillWidth: true
+                      text: llama.sanitize(modelData.id || "")
+                      color: root.foreground
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.body
+                      textFormat: Text.PlainText
+                      elide: Text.ElideRight
+                    }
+                    Text {
+                      Layout.fillWidth: true
+                      text: (modelData.downloads || 0).toLocaleString("en-GB") + " downloads"
+                      color: root.dim
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.caption
+                      textFormat: Text.PlainText
+                    }
+                  }
+
+                  Button {
+                    text: root.downloading ? "..." : "Download"
+                    bordered: true
+                    foreground: root.foreground
+                    enabled: !root.downloading
+                    onClicked: {
+                      root.downloading = true
+                      root.downloadStatus = "Downloading " + modelData.id + "..."
+                      downloadProcess.environment = { "PLUGIN_REPO": String(modelData.id || ""), "PLUGIN_DIR": llama.modelsDir }
+                      downloadProcess.running = true
+                      downloadWatchdog.restart()
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
         // ── Models on disk ──────────────────────────────────────────
         PanelSeparator {
           visible: llama.models.length > 0
@@ -564,7 +725,7 @@ Panel {
     running: false
     environment: ({ "PLUGIN_VAL": "0" })
     command: ["timeout", "-k", "2", "8", "bash", "-c",
-              "set -o pipefail; omarchy bar set com.github.linuxgameruk.omallamacpp useRocm \"$PLUGIN_VAL\" 2>&1 | head -c 256"]
+              "set -o pipefail; omarchy bar set arggon.localai useRocm \"$PLUGIN_VAL\" 2>&1 | head -c 256"]
     onExited: function(exitCode) {
       backendSetWatchdog.stop()
       llama.refresh()
@@ -577,6 +738,49 @@ Panel {
     interval: 8000
     repeat: false
     onTriggered: if (backendSetProcess.running) backendSetProcess.running = false
+  }
+
+
+  Process {
+    id: searchProcess
+    running: false
+    environment: ({ "PLUGIN_QUERY": "" })
+    command: ["timeout", "-k", "2", "30", "bash", "/home/arggon/.config/omarchy/plugins/arggon.localai/search-models.sh"]
+    stdout: SplitParser { onRead: function(line) { root._onSearchLine(line) } }
+    onExited: function(exitCode) {
+      searchWatchdog.stop()
+      root.searching = false
+      if (exitCode === 0) root._applySearchResults()
+      else { root._searchModelList = []; root.searchResults = []; root.downloadStatus = "Search failed." }
+    }
+  }
+
+  Timer {
+    id: searchWatchdog
+    interval: 30000
+    repeat: false
+    onTriggered: if (searchProcess.running) searchProcess.running = false
+  }
+
+  Process {
+    id: downloadProcess
+    running: false
+    environment: ({ "PLUGIN_REPO": "", "PLUGIN_DIR": "" })
+    command: ["timeout", "-k", "5", "600", "bash", "/home/arggon/.config/omarchy/plugins/arggon.localai/download-model.sh"]
+    stdout: SplitParser { onRead: function(line) { root.downloadStatus = root.downloadStatus + line + " " } }
+    onExited: function(exitCode) {
+      downloadWatchdog.stop()
+      root.downloading = false
+      if (exitCode === 0) { root.downloadStatus = "Download finished."; llama.refresh() }
+      else root.downloadStatus = "Download failed (exit " + exitCode + ")."
+    }
+  }
+
+  Timer {
+    id: downloadWatchdog
+    interval: 600000
+    repeat: false
+    onTriggered: if (downloadProcess.running) downloadProcess.running = false
   }
 
 }

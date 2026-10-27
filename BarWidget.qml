@@ -5,7 +5,7 @@ import qs.Commons
 
 BarWidget {
   id: root
-  moduleName: "com.github.linuxgameruk.omallamacpp"
+  moduleName: "arggon.localai"
 
   readonly property bool opened: panelLoader.item
     ? panelLoader.item.opened === true
@@ -75,7 +75,7 @@ BarWidget {
     tooltipText: {
       if (!llama.installed) return "llama-server not found (see README)"
       if (!llama.hasService) return "No service yet — pick a model in the panel"
-      var t = llama.running ? "OmaLlamaCpp · Serving" : "OmaLlamaCpp · Offline"
+      var t = llama.running ? "ArggonLocalAI · Serving" : "ArggonLocalAI · Offline"
       if (llama.running && llama.vramUsed !== "") t += " · VRAM " + llama.vramUsed
       return t
     }
